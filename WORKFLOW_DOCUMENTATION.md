@@ -226,24 +226,7 @@ All production workflow runs appear in the **Executions** list in n8n, accessibl
 ## AI Model
 
 All three AI steps use **Google Gemini 2.0 Flash Lite** (`models/gemini-2.0-flash-lite`). This model is fast, free-tier generous at 1500 requests per day, and produces high quality output for summarization and drafting tasks. No OpenAI API key is required.
-
----
-
-## Handover Checklist
-
-Before handing this workflow over confirm the following are complete.
-
-- [ ] Google Sheet created with correct column names
-- [ ] Error Log tab created in the same spreadsheet
-- [ ] Apps Script installed with correct webhook URL and trigger set to On edit
-- [ ] All four credentials connected in n8n
-- [ ] All placeholder values replaced in the workflow JSON
-- [ ] Workflow set to Active
-- [ ] Test lead added to sheet and full end-to-end flow confirmed
-- [ ] Approve button tested and email received by lead
-- [ ] Reject button tested and status updated in sheet
-
----
+But for produciton you should use any advance model from openai , google , anthropic or any other .
 
 ## Support
 
