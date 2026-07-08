@@ -1,0 +1,550 @@
+{
+  "name": "Lead Qualification & Human Approval — FINAL",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dbf6c284-0d77-4138-a241-9f6b875f2dc2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-3088, 400],
+      "id": "144d7d59-14ec-498d-bbbd-f1992e773591",
+      "name": "Webhook",
+      "webhookId": "dbf6c284-0d77-4138-a241-9f6b875f2dc2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign_name",
+              "name": "Full Name",
+              "value": "={{ $json.body['Full Name'] ?? $json.body['Name'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "assign_email",
+              "name": "Email",
+              "value": "={{ $json.body['Email'] ?? $json.body['Emai'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "assign_phone",
+              "name": "Phone Number",
+              "value": "={{ $json.body['Phone Number'] ?? $json.body['Phone'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "assign_company",
+              "name": "Company",
+              "value": "={{ $json.body['Company / Business Name'] ?? $json.body['Company'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "assign_address",
+              "name": "Address",
+              "value": "={{ $json.body['Address / Location'] ?? $json.body['Adress'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "assign_message",
+              "name": "Message",
+              "value": "={{ $json.body['Message'] ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "assign_row",
+              "name": "row_number",
+              "value": "={{ $json.body['row_number'] }}",
+              "type": "number"
+            },
+            {
+              "id": "assign_lead_id",
+              "name": "Lead_ID",
+              "value": "={{ $json.body['Lead_ID'] ?? 'LEAD-' + $json.body['row_number'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-2864, 400],
+      "id": "205e5d03-3de8-4ca9-a2fa-09a2da7c4231",
+      "name": "Flatten Lead Data"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status ": "Pending",
+            "Submitted ": "={{ $now.toISO() }}",
+            "row_number": "={{ $json.row_number }}"
+          },
+          "matchingColumns": ["row_number"],
+          "schema": [
+            { "id": "Status ", "displayName": "Status ", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Submitted ", "displayName": "Submitted ", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "row_number", "displayName": "row_number", "required": false, "defaultMatch": true, "display": true, "type": "number", "canBeUsedToMatch": true }
+          ]
+        },
+        "options": {}
+      },
+      "id": "write_pending_node",
+      "name": "Write Pending Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [-2640, 400],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            { "id": "check_name", "leftValue": "={{ $json['Full Name'] }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } },
+            { "id": "check_email", "leftValue": "={{ $json['Email'] }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } },
+            { "id": "check_phone", "leftValue": "={{ $json['Phone Number'] }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6b9aa686-ca79-46dc-9556-387371ac557c",
+      "name": "Validate Lead Fields",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-2416, 400]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional lead analyst.\n\nAnalyze the following lead and write a short, clear 2-3 sentence summary of who this lead is, what they likely need, and any notable signals from their message. Be concise and professional. Write only the summary with no labels or preamble.\n\nFull Name: {{ $('Flatten Lead Data').item.json['Full Name'] }}\nEmail: {{ $('Flatten Lead Data').item.json['Email'] }}\nPhone: {{ $('Flatten Lead Data').item.json['Phone Number'] }}\nCompany: {{ $('Flatten Lead Data').item.json['Company'] }}\nAddress: {{ $('Flatten Lead Data').item.json['Address'] }}\nMessage: {{ $('Flatten Lead Data').item.json['Message'] }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [-2192, 208],
+      "id": "434248b7-a07f-4bf8-b939-ac7582b66011",
+      "name": "Lead Summarize AI"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-lite",
+        "options": {}
+      },
+      "id": "b3955afd-6334-4674-ab33-baf07f072413",
+      "name": "Gemini Model — Summary",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-2192, 400],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GEMINI_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a lead qualification specialist. Score the following lead from 1 to 10 based on:\n- Clarity of their need or request (1-3 points)\n- Business legitimacy based on company and contact info (1-3 points)\n- Urgency and intent signals from their message (1-4 points)\n\nRespond in this exact format only:\nSCORE: [number]/10\nREASON: [one sentence justification]\n\nFull Name: {{ $('Flatten Lead Data').item.json['Full Name'] }}\nCompany: {{ $('Flatten Lead Data').item.json['Company'] }}\nAddress: {{ $('Flatten Lead Data').item.json['Address'] }}\nMessage: {{ $('Flatten Lead Data').item.json['Message'] }}\nLead Summary: {{ $('Lead Summarize AI').item.json.text }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [-1952, 208],
+      "id": "030d74d0-0e90-424e-816a-3c87f2fc8c11",
+      "name": "Lead Score AI"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-lite",
+        "options": {}
+      },
+      "id": "1070f87b-0d44-4436-ac08-7af2a4c89396",
+      "name": "Gemini Model — Score",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-1952, 400],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GEMINI_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional business development writer. Write a short personalized follow-up email message for a new lead.\n\nRules:\n- Address the lead by their first name only\n- Reference their company or specific need naturally\n- Be warm but professional\n- Maximum 3-4 sentences\n- End with a clear next step such as scheduling a call\n- Never sound generic or templated\n- Write only the message body with no subject line and no labels\n\nFull Name: {{ $('Flatten Lead Data').item.json['Full Name'] }}\nCompany: {{ $('Flatten Lead Data').item.json['Company'] }}\nMessage they sent: {{ $('Flatten Lead Data').item.json['Message'] }}\nLead Summary: {{ $('Lead Summarize AI').item.json.text }}\nQualification Score: {{ $('Lead Score AI').item.json.text }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [-1712, 208],
+      "id": "e840e46c-69dc-4674-ae47-316a1226cd6a",
+      "name": "Draft Follow Up Msg AI"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash-lite",
+        "options": {}
+      },
+      "id": "4acb9803-143b-4adb-a917-1c5ebef35782",
+      "name": "Gemini Model — Draft",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-1712, 400],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GEMINI_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "sendAndWait",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BFZC59G04",
+          "mode": "id"
+        },
+        "message": "=🆕 *New Lead Requires Approval*\n\n*Name:* {{ $('Flatten Lead Data').item.json['Full Name'] }}\n*Email:* {{ $('Flatten Lead Data').item.json['Email'] }}\n*Phone:* {{ $('Flatten Lead Data').item.json['Phone Number'] }}\n*Company:* {{ $('Flatten Lead Data').item.json['Company'] }}\n*Address:* {{ $('Flatten Lead Data').item.json['Address'] }}\n*Lead ID:* {{ $('Flatten Lead Data').item.json['Lead_ID'] }}\n\n📋 *AI Summary:*\n{{ $('Lead Summarize AI').item.json.text }}\n\n⭐ *Qualification Score:*\n{{ $('Lead Score AI').item.json.text }}\n\n✉️ *Drafted Follow-Up Message:*\n{{ $json.text }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "approveLabel": "✅ Approve & Send Email",
+            "rejectLabel": "❌ Reject"
+          }
+        },
+        "options": {}
+      },
+      "id": "3fee26d7-b232-4d6b-8e5d-67c1325d6c28",
+      "name": "Slack — Send and Wait for Approval",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [-1472, 208],
+      "webhookId": "878ea5e4-d7f3-4bc1-ba17-26c9e7ece9bf",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "check_approval",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8348b882-d7e6-41c2-876f-ce04ee318b65",
+      "name": "Approved or Rejected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-1232, 208]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status ": "Approved",
+            "Submitted ": "={{ $now.toISO() }}",
+            "row_number": "={{ $('Flatten Lead Data').item.json.row_number }}"
+          },
+          "matchingColumns": ["row_number"],
+          "schema": [
+            { "id": "Status ", "displayName": "Status ", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Submitted ", "displayName": "Submitted ", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "row_number", "displayName": "row_number", "required": false, "defaultMatch": true, "display": true, "type": "number", "canBeUsedToMatch": true }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0a6725bb-3e55-4d8f-8ebf-d6f0471d88fc",
+      "name": "Write Approved Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [-992, 80],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Flatten Lead Data').item.json['Email'] }}",
+        "subject": "={{ 'Following up — ' + $('Flatten Lead Data').item.json['Company'] }}",
+        "emailType": "text",
+        "message": "={{ $('Draft Follow Up Msg AI').item.json.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [-752, 80],
+      "id": "cf617145-c60a-4bc0-824a-e31c8b4f5956",
+      "name": "Send Email to Lead",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BFZC59G04",
+          "mode": "id"
+        },
+        "text": "=✅ *Lead Approved & Email Sent*\nFollow-up email sent to *{{ $('Flatten Lead Data').item.json['Full Name'] }}* at *{{ $('Flatten Lead Data').item.json['Email'] }}*\n🕐 {{ $now.toISO() }}",
+        "otherOptions": {}
+      },
+      "id": "7aa62c3a-83ab-420a-83f1-c959bffbd907",
+      "name": "Slack — Confirm Approved",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [-512, 80],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status ": "Rejected",
+            "Submitted ": "={{ $now.toISO() }}",
+            "row_number": "={{ $('Flatten Lead Data').item.json.row_number }}"
+          },
+          "matchingColumns": ["row_number"],
+          "schema": [
+            { "id": "Status ", "displayName": "Status ", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Submitted ", "displayName": "Submitted ", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "row_number", "displayName": "row_number", "required": false, "defaultMatch": true, "display": true, "type": "number", "canBeUsedToMatch": true }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1099ad96-9a2e-404c-9ceb-554a194a1476",
+      "name": "Write Rejected Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [-992, 336],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0BFZC59G04",
+          "mode": "id"
+        },
+        "text": "=❌ *Lead Rejected*\n*{{ $('Flatten Lead Data').item.json['Full Name'] }}* from *{{ $('Flatten Lead Data').item.json['Company'] }}* was rejected. No email sent.\n🕐 {{ $now.toISO() }}",
+        "otherOptions": {}
+      },
+      "id": "9355a8d9-ae05-4d79-8133-4dee1550dc02",
+      "name": "Slack — Confirm Rejected",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [-752, 336],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "YOUR_SLACK_CREDENTIAL_ID",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Error Log",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.toISO() }}",
+            "Lead Name": "={{ $('Flatten Lead Data').item.json['Full Name'] ?? 'Unknown' }}",
+            "Email": "={{ $('Flatten Lead Data').item.json['Email'] ?? 'Unknown' }}",
+            "Error Type": "Missing Required Fields",
+            "Details": "=Missing: {{ ['Full Name','Email','Phone Number'].filter(f => !$('Flatten Lead Data').item.json[f]).join(', ') }}",
+            "Status": "Needs Manual Review"
+          },
+          "matchingColumns": [],
+          "schema": [
+            { "id": "Timestamp", "displayName": "Timestamp", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Lead Name", "displayName": "Lead Name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Email", "displayName": "Email", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Error Type", "displayName": "Error Type", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Details", "displayName": "Details", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false },
+            { "id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8fe1faee-899a-431d-ba3a-d8ea238dd0e0",
+      "name": "Error Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [-2416, 608],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Flatten Lead Data", "type": "main", "index": 0 }]]
+    },
+    "Flatten Lead Data": {
+      "main": [[{ "node": "Write Pending Status", "type": "main", "index": 0 }]]
+    },
+    "Write Pending Status": {
+      "main": [[{ "node": "Validate Lead Fields", "type": "main", "index": 0 }]]
+    },
+    "Validate Lead Fields": {
+      "main": [
+        [{ "node": "Lead Summarize AI", "type": "main", "index": 0 }],
+        [{ "node": "Error Log", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gemini Model — Summary": {
+      "ai_languageModel": [[{ "node": "Lead Summarize AI", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Lead Summarize AI": {
+      "main": [[{ "node": "Lead Score AI", "type": "main", "index": 0 }]]
+    },
+    "Gemini Model — Score": {
+      "ai_languageModel": [[{ "node": "Lead Score AI", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Lead Score AI": {
+      "main": [[{ "node": "Draft Follow Up Msg AI", "type": "main", "index": 0 }]]
+    },
+    "Gemini Model — Draft": {
+      "ai_languageModel": [[{ "node": "Draft Follow Up Msg AI", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Draft Follow Up Msg AI": {
+      "main": [[{ "node": "Slack — Send and Wait for Approval", "type": "main", "index": 0 }]]
+    },
+    "Slack — Send and Wait for Approval": {
+      "main": [[{ "node": "Approved or Rejected?", "type": "main", "index": 0 }]]
+    },
+    "Approved or Rejected?": {
+      "main": [
+        [{ "node": "Write Approved Status", "type": "main", "index": 0 }],
+        [{ "node": "Write Rejected Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Write Approved Status": {
+      "main": [[{ "node": "Send Email to Lead", "type": "main", "index": 0 }]]
+    },
+    "Send Email to Lead": {
+      "main": [[{ "node": "Slack — Confirm Approved", "type": "main", "index": 0 }]]
+    },
+    "Write Rejected Status": {
+      "main": [[{ "node": "Slack — Confirm Rejected", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5cd72848a1bd808f9ccec0402bf99648be040d77406be6442a12b0a5fdf95795"
+  }
+}
